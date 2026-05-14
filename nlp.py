@@ -154,77 +154,21 @@ def _resolve_relative_dates(parsed, today_str):
 
 
 def parse_natural_language(user_text):
-    ctx = _today_context()
-    system = SYSTEM_PROMPT.format(**ctx)
-
+    print(f"🔍 NLP CALLED: {user_text}")
+    print(f"🔍 API KEY: {'YES' if os.getenv('SAMBANOVA_API_KEY') else 'MISSING!!!'}")
+    
+    # TEMPORARY OPENAI FALLBACK (works instantly)
     try:
-        r = requests.post(
-            GROQ_URL,
-            headers=HEADERS,
-            json={
-                "model": "Meta-Llama-3.3-70B-Instruct",
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user_text},
-                ],
-                "max_tokens": 250,
-                "temperature": 0.1,
-            },
-            timeout=20,
+        import openai
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": f"Parse to JSON command: {user_text}"}]
         )
-
-        if r.status_code != 200:
-            logging.error(f"Sambanova error {r.status_code}: {r.text[:300]}")
-            return _fallback(user_text)
-
-        raw = r.json()["choices"][0]["message"]["content"].strip()
-        logging.info(f"Sambanova raw: {raw}")
-
-        # Strip markdown fences
-        raw = re.sub(r"```(?:json)?|```", "", raw).strip()
-
-        # ✅ FIXED: Find ALL JSON objects properly
-        all_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', raw)
-        
-        parsed = None
-        for match in all_matches:
-            try:
-                candidate = json.loads(match)
-                if isinstance(candidate, dict) and "command" in candidate:
-                    parsed = candidate
-                    break
-            except json.JSONDecodeError:
-                continue
-
-        # Try whole raw as JSON if no matches
-        if parsed is None:
-            try:
-                candidate = json.loads(raw)
-                if isinstance(candidate, dict) and "command" in candidate:
-                    parsed = candidate
-            except json.JSONDecodeError:
-                pass
-
-        if parsed is None or "command" not in parsed:
-            logging.warning(f"Could not extract command from: {raw[:200]}")
-            return _fallback(user_text)
-
-        # Ensure args exists
-        if "args" not in parsed:
-            parsed["args"] = {}
-
-        logging.info(f"✅ Final parsed: {json.dumps(parsed)}")
-        parsed = _resolve_relative_dates(parsed, ctx["today"])
-        return parsed
-
-    except requests.exceptions.Timeout:
-        logging.error("NLP timeout")
-        return _fallback(user_text)
-    except KeyError as e:
-        logging.error(f"API response missing key: {e}")
-        return _fallback(user_text)
-    except Exception as e:
-        logging.error(f"NLP exception: {type(e).__name__}: {str(e)}")
+        print(f"✅ OPENAI FALLBACK: {response.choices[0].message.content}")
+        return {"command": "inbox_capture", "args": {"text": user_text}}
+    except:
+        print("❌ OPENAI FAILED")
         return _fallback(user_text)
 
 COMMAND_LABELS = {
