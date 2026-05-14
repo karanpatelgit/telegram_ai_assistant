@@ -185,8 +185,27 @@ def parse_natural_language(user_text):
         raw = re.sub(r"```(?:json)?|```", "", raw).strip()
 
         # Find ALL json objects and pick the one with "command" key
-        all_matches = re.findall(r"\{[^{}]*\}", raw, re.DOTALL)
+        start = raw.find("{")
+        if start == -1:
+            return _fallback(user_text)
         
+        # Walk chars to find matching closing brace
+        depth = 0
+        end = -1
+        for i, ch in enumerate(raw[start:], start):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    end = i + 1
+                    break
+        
+        if end == -1:
+            return _fallback(user_text)
+        
+        parsed = json.loads(raw[start:end])
+                
         parsed = None
         for match in all_matches:
             try:
