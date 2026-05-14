@@ -1,6 +1,6 @@
-python-telegram-bot[job-queue]==20.7
+openai>=1.0.0
 requests
+python-telegram-bot[all]
+apscheduler
 python-dotenv
 pytz
-apscheduler
-pandas
