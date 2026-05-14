@@ -142,12 +142,20 @@ def parse_natural_language(user_text: str) -> dict:
             logging.error(f"Groq error {r.status_code}: {r.text[:300]}")
             return _fallback(user_text)
 
-        raw = r.json()["choices"][0]["message"]["content"].strip()
-        logging.info(f"Groq raw response: {raw}")
-        
-        # Strip accidental markdown fences
-        raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.MULTILINE).strip()
+       raw = r.json()["choices"][0]["message"]["content"].strip()
 
+        # Strip markdown fences more aggressively
+        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
+        
+        # Extract just the JSON object if there's extra text around it
+        json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+        if not json_match:
+            logging.warning(f"No JSON found in Groq response: {raw}")
+            return _fallback(text)
+        
+        raw = json_match.group()
+        logging.info(f"Groq extracted JSON: {raw}")
+        
         parsed = json.loads(raw)
 
         # Sanity-check shape
@@ -156,7 +164,9 @@ def parse_natural_language(user_text: str) -> dict:
 
         # Fix relative dates that Groq sometimes returns literally
         parsed = _resolve_relative_dates(parsed, ctx["today"])
-
+        logging.info(f"Groq raw: {raw}")
+        logging.info(f"Groq parsed: {parsed}")
+        
         return parsed
 
     except Exception:
