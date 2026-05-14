@@ -59,7 +59,7 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
 
 async def post_init(application: Application):
     await application.bot.delete_webhook(drop_pending_updates=True)
-    await asyncio.sleep(2)
+    await asyncio.sleep(5)
     logging.info("✅ Bot initialized")
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -832,7 +832,12 @@ def main():
     jq.run_daily(night_summary,    time=dtime(22, 0, tzinfo=ist))
 
     print("🚀 AI Life OS Bot Running... (natural language mode active)")
-    app.run_polling(drop_pending_updates=True, allowed_updates=Update.ALL_TYPES)
+    app.run_polling(
+    drop_pending_updates=True,
+    allowed_updates=Update.ALL_TYPES,
+    poll_interval=1.0,
+    timeout=10
+    )
 
 
 if __name__ == "__main__":
