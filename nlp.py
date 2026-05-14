@@ -14,8 +14,10 @@ import pytz
 
 load_dotenv()
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_URL = "https://api.sambanova.ai/v1/chat/completions"
+GROQ_API_KEY = os.getenv("SAMBANOVA_API_KEY")
+
+
 HEADERS = {
     "Authorization": f"Bearer {GROQ_API_KEY}",
     "Content-Type": "application/json"
@@ -160,7 +162,8 @@ def parse_natural_language(user_text):
             GROQ_URL,
             headers=HEADERS,
             json={
-                "model": "llama-3.1-8b-instant",
+                # And change the model name:
+                "model": "Meta-Llama-3.3-70B-Instruct",  # much better at JSON than 8B,
                 "messages": [
                     {"role": "system", "content": system},
                     {"role": "user", "content": user_text},
