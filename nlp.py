@@ -154,7 +154,6 @@ def _resolve_relative_dates(parsed, today_str):
 def parse_natural_language(user_text):
     ctx = _today_context()
     system = SYSTEM_PROMPT.format(**ctx)
-    raw = ""
 
     try:
         r = requests.post(
@@ -180,43 +179,43 @@ def parse_natural_language(user_text):
         logging.info(f"Groq raw: {raw}")
 
         # Strip markdown fences
-        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
+        raw = re.sub(r"```(?:json)?|```", "", raw).strip()
 
-        # Extract JSON object
-        json_match = re.search(r"\{.*\}", raw, re.DOTALL)
-        if not json_match:
-            return _fallback(user_text)
-
-        parsed = json.loads(json_match.group())
-        logging.info(f"Groq parsed keys: {list(parsed.keys())}")
-
-        # Handle if model used different key names
-        # e.g. "action" instead of "command", "parameters" instead of "args"
-        if "command" not in parsed:
-            for alt in ("action", "intent", "cmd", "type"):
-                if alt in parsed:
-                    parsed["command"] = parsed[alt]
+        # Find ALL json objects and pick the one with "command" key
+        all_matches = re.findall(r"\{[^{}]*\}", raw, re.DOTALL)
+        
+        parsed = None
+        for match in all_matches:
+            try:
+                candidate = json.loads(match)
+                if "command" in candidate:
+                    parsed = candidate
                     break
+            except:
+                continue
 
-        if "args" not in parsed:
-            for alt in ("parameters", "params", "arguments", "data"):
-                if alt in parsed:
-                    parsed["args"] = parsed[alt]
-                    break
+        # If no simple match, try the whole raw as JSON
+        if parsed is None:
+            try:
+                candidate = json.loads(raw)
+                if isinstance(candidate, dict):
+                    parsed = candidate
+            except:
+                pass
 
-        # If still missing, wrap the whole thing
-        if "command" not in parsed:
-            logging.warning(f"No command key found, keys were: {list(parsed.keys())}")
+        if parsed is None or "command" not in parsed:
+            logging.warning(f"Could not extract command from: {raw}")
             return _fallback(user_text)
 
         if "args" not in parsed:
             parsed["args"] = {}
 
+        logging.info(f"Final parsed: {parsed}")
         parsed = _resolve_relative_dates(parsed, ctx["today"])
         return parsed
 
     except Exception as e:
-        logging.error(f"NLP parse exception: {e} | raw was: {raw}")
+        logging.error(f"NLP exception: {type(e).__name__}: {e}")
         return _fallback(user_text)
 
 COMMAND_LABELS = {
