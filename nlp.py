@@ -162,8 +162,7 @@ def parse_natural_language(user_text):
             GROQ_URL,
             headers=HEADERS,
             json={
-                # And change the model name:
-                "model": "Meta-Llama-3.3-70B-Instruct",  # much better at JSON than 8B,
+                "model": "Meta-Llama-3.3-70B-Instruct",
                 "messages": [
                     {"role": "system", "content": system},
                     {"role": "user", "content": user_text},
@@ -175,69 +174,57 @@ def parse_natural_language(user_text):
         )
 
         if r.status_code != 200:
-            logging.error(f"Groq error {r.status_code}: {r.text[:300]}")
+            logging.error(f"Sambanova error {r.status_code}: {r.text[:300]}")
             return _fallback(user_text)
 
         raw = r.json()["choices"][0]["message"]["content"].strip()
-        logging.info(f"Groq raw: {raw}")
+        logging.info(f"Sambanova raw: {raw}")
 
         # Strip markdown fences
         raw = re.sub(r"```(?:json)?|```", "", raw).strip()
 
-        # Find ALL json objects and pick the one with "command" key
-        start = raw.find("{")
-        if start == -1:
-            return _fallback(user_text)
+        # ✅ FIXED: Find ALL JSON objects properly
+        all_matches = re.findall(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', raw)
         
-        # Walk chars to find matching closing brace
-        depth = 0
-        end = -1
-        for i, ch in enumerate(raw[start:], start):
-            if ch == "{":
-                depth += 1
-            elif ch == "}":
-                depth -= 1
-                if depth == 0:
-                    end = i + 1
-                    break
-        
-        if end == -1:
-            return _fallback(user_text)
-        
-        parsed = json.loads(raw[start:end])
-                
         parsed = None
         for match in all_matches:
             try:
                 candidate = json.loads(match)
-                if "command" in candidate:
+                if isinstance(candidate, dict) and "command" in candidate:
                     parsed = candidate
                     break
-            except:
+            except json.JSONDecodeError:
                 continue
 
-        # If no simple match, try the whole raw as JSON
+        # Try whole raw as JSON if no matches
         if parsed is None:
             try:
                 candidate = json.loads(raw)
-                if isinstance(candidate, dict):
+                if isinstance(candidate, dict) and "command" in candidate:
                     parsed = candidate
-            except:
+            except json.JSONDecodeError:
                 pass
 
         if parsed is None or "command" not in parsed:
-            logging.warning(f"Could not extract command from: {raw}")
+            logging.warning(f"Could not extract command from: {raw[:200]}")
             return _fallback(user_text)
 
+        # Ensure args exists
         if "args" not in parsed:
             parsed["args"] = {}
 
-        logging.info(f"Final parsed: {parsed}")
+        logging.info(f"✅ Final parsed: {json.dumps(parsed)}")
         parsed = _resolve_relative_dates(parsed, ctx["today"])
         return parsed
 
+    except requests.exceptions.Timeout:
+        logging.error("NLP timeout")
+        return _fallback(user_text)
+    except KeyError as e:
+        logging.error(f"API response missing key: {e}")
+        return _fallback(user_text)
     except Exception as e:
-        logging.error(f"NLP exception: {type(e).__name__}: {e}")
+        logging.error(f"NLP exception: {type(e).__name__}: {str(e)}")
         return _fallback(user_text)
 
 COMMAND_LABELS = {
