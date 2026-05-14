@@ -523,7 +523,7 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
         await thinking.edit_text("⏱ Took too long. Try again or use /commands")
         return
     except Exception as e:
-        await thinking.edit_text(f"❌ Parse error: {e}")
+        await thinking.edit_text(f"❌ Error: {type(e).__name__}: {e}")
         return
 
     cmd  = parsed.get("command", "inbox_capture")
