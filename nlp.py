@@ -101,7 +101,9 @@ User: remember my college as IIT Delhi
 User: meeting with Rahul tomorrow
 {"command":"inbox_capture","args":{"text":"Meeting with Rahul tomorrow"}}
 """
-
+def parse_natural_language(user_text):
+    logging.info(f"GROQ_API_KEY set: {bool(GROQ_API_KEY)}")
+    logging.info(f"User text received: {user_text}")
 
 def _today_context():
     now = datetime.now(ist)
