@@ -517,23 +517,28 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
     try:
         parsed = await asyncio.wait_for(
             loop.run_in_executor(None, parse_natural_language, user_text),
-            timeout=20  # ← add timeout so it doesn't hang forever
+            timeout=20
         )
-    except asyncio.TimeoutError:
-        await thinking.edit_text("⏱ Took too long. Try again or use /commands")
-        return
     except Exception as e:
-        await thinking.edit_text(f"❌ Error: {type(e).__name__}: {e}")
+        logging.error(f"NLP executor error: {e}")
+        add_inbox(user_text)
+        await thinking.edit_text("📥 Saved to inbox! (NLP unavailable)")
+        return
+
+    # Safety net - ensure parsed is always valid
+    if not isinstance(parsed, dict) or "command" not in parsed:
+        logging.error(f"Invalid parsed result: {parsed}")
+        add_inbox(user_text)
+        await thinking.edit_text("📥 Saved to inbox!")
         return
 
     cmd  = parsed.get("command", "inbox_capture")
     args = parsed.get("args", {})
-
-    # DEBUG LINE — remove after confirming it works
-    logging.info(f"NLP parsed: cmd={cmd}, args={args}")
     
-    # ... rest of dispatch
+    logging.info(f"NLP result: cmd={cmd} args={args}")
 
+    # ... rest of your dispatch code
+    
     # ── Dispatch to the right action ─────────────────────────────────────────
 
     if cmd == "add_task":
