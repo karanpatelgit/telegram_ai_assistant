@@ -50,8 +50,11 @@ def _fallback(text):
     return {"command": "inbox_capture", "args": {"text": text}}
 
 def parse_natural_language(user_text):
-    """Main NLP parser - 99.9% reliable"""
-    print(f"🔍 NLP INPUT: {user_text}")
+    print("🚀🚀🚀 NLP FUNCTION CALLED!!!")
+    print(f"INPUT: {user_text}")
+    print(f"SAMBANOVA_KEY: {bool(os.getenv('SAMBANOVA_API_KEY'))}")
+    print(f"OPENAI_KEY: {bool(os.getenv('OPENAI_API_KEY'))}")
+    
     
     try:
         response = client.chat.completions.create(
