@@ -507,23 +507,32 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Replaces the old quick_capture. Every plain-text message goes through the
-    NLP parser. If a clear intent is found it is executed immediately.
-    Ambiguous messages fall back to inbox capture (same as before).
-    """
     user_id   = update.message.from_user.id
     user_text = update.message.text.strip()
 
-    # Show a lightweight "processing" indicator
-    thinking  = await update.message.reply_text("🧠 Understanding...")
+    thinking = await update.message.reply_text("🧠 Understanding...")
 
-    # Run NLP in executor so we don't block the event loop
-    loop   = asyncio.get_event_loop()
-    parsed = await loop.run_in_executor(None, parse_natural_language, user_text)
+    loop = asyncio.get_event_loop()
+
+    try:
+        parsed = await asyncio.wait_for(
+            loop.run_in_executor(None, parse_natural_language, user_text),
+            timeout=20  # ← add timeout so it doesn't hang forever
+        )
+    except asyncio.TimeoutError:
+        await thinking.edit_text("⏱ Took too long. Try again or use /commands")
+        return
+    except Exception as e:
+        await thinking.edit_text(f"❌ Parse error: {e}")
+        return
 
     cmd  = parsed.get("command", "inbox_capture")
     args = parsed.get("args", {})
+
+    # DEBUG LINE — remove after confirming it works
+    logging.info(f"NLP parsed: cmd={cmd}, args={args}")
+    
+    # ... rest of dispatch
 
     # ── Dispatch to the right action ─────────────────────────────────────────
 
