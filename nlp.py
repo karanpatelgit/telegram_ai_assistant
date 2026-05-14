@@ -161,20 +161,41 @@ def _resolve_relative_dates(parsed, today_str):
 
 def parse_natural_language(user_text):
     print(f"🔍 NLP CALLED: {user_text}")
-    print(f"🔍 API KEY: {'YES' if os.getenv('SAMBANOVA_API_KEY') else 'MISSING!!!'}")
     
-    # TEMPORARY OPENAI FALLBACK (works instantly)
+    ctx = _today_context()
+    system = SYSTEM_PROMPT.format(**ctx)
+
     try:
-        import openai
-        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": f"Parse to JSON command: {user_text}"}]
+        print("🔍 CALLING SAMBANOVA...")
+        r = requests.post(
+            "https://api.sambanova.ai/v1/chat/completions",  # Your endpoint
+            headers=HEADERS,
+            json={
+                "model": "meta-llama/Meta-Llama-3.1-8B-Instruct",  # Reliable model
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user_text},
+                ],
+                "max_tokens": 250,
+                "temperature": 0.1,
+            },
+            timeout=20,
         )
-        print(f"✅ OPENAI FALLBACK: {response.choices[0].message.content}")
-        return {"command": "inbox_capture", "args": {"text": user_text}}
-    except:
-        print("❌ OPENAI FAILED")
+        
+        print(f"🔍 SAMBANOVA STATUS: {r.status_code}")
+        
+        if r.status_code != 200:
+            print(f"🔍 SAMBANOVA ERROR: {r.text[:200]}")
+            return _fallback(user_text)
+
+        raw = r.json()["choices"][0]["message"]["content"].strip()
+        print(f"🔍 SAMBANOVA RAW: {raw[:100]}")
+        
+        # Your existing JSON parsing code here...
+        # (the fixed version from earlier)
+        
+    except Exception as e:
+        print(f"🔍 ERROR: {type(e).__name__}: {str(e)}")
         return _fallback(user_text)
 
 COMMAND_LABELS = {
