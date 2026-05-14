@@ -206,7 +206,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             menus[data],
             reply_markup=back_markup,
-            parse_mode="Markdown"
+            
         )
 
 # ─────────────────────────────────────────────────────────────────────────────
