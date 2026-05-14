@@ -139,10 +139,12 @@ def parse_natural_language(user_text: str) -> dict:
             timeout=20,
         )
         if r.status_code != 200:
+            logging.error(f"Groq error {r.status_code}: {r.text[:300]}")
             return _fallback(user_text)
 
         raw = r.json()["choices"][0]["message"]["content"].strip()
-
+        logging.info(f"Groq raw response: {raw}")
+        
         # Strip accidental markdown fences
         raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.MULTILINE).strip()
 
