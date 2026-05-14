@@ -104,6 +104,12 @@ User: meeting with Rahul tomorrow
 {"command":"inbox_capture","args":{"text":"Meeting with Rahul tomorrow"}}
 """
 
+def test_api_key():
+    print(f"🔑 SAMBANOVA_KEY_LEN: {len(os.getenv('SAMBANOVA_API_KEY', ''))}")
+    print(f"🔑 KEY_STARTS_WITH: {os.getenv('SAMBANOVA_API_KEY', '')[:10]}")
+    
+# Call once on startup
+test_api_key()
 
 def _today_context():
     now = datetime.now(ist)
