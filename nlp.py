@@ -28,44 +28,37 @@ def _fallback(text):
     return {"command": "inbox_capture", "args": {"text": text}}
 
 def keyword_parser(text):
-    """Smart keyword parser with date/time extraction"""
     text = text.lower()
-    args = {"task": text}
     
-    # Extract date
+    # BLOCK "show/list" commands from becoming add_task
+    if any(word in text for word in ["show ", "list ", "today ", "tasks?"]):
+        if "task" in text or "today" in text:
+            return {"command": "today_tasks", "args": {}}
+        return None  # Let AI handle other lists
+    
+    # Date/time extraction (your existing code)
+    args = {"task": text}
     date_match = re.search(r'(\d{4}-\d{2}-\d{2})|(tomorrow)|(today)', text)
     if date_match:
-        if date_match.group(1):
-            args["date"] = date_match.group(1)
-        elif date_match.group(2):
-            args["date"] = "TOMORROW"
-        else:
-            args["date"] = "TODAY"
+        args["date"] = date_match.group(1) or "TOMORROW" or "TODAY"
     
-    # Extract time
     time_match = re.search(r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)', text, re.IGNORECASE)
     if time_match:
         hour = int(time_match.group(1))
         minute = int(time_match.group(2)) if time_match.group(2) else 0
         if time_match.group(3).upper() == "PM" and hour != 12:
             hour += 12
-        elif time_match.group(3).upper() == "AM" and hour == 12:
-            hour = 0
         args["time"] = f"{hour:02d}:{minute:02d}"
     
-    # Category inference
-    if any(word in text for word in ["gym", "workout", "exercise"]):
+    # Smart category
+    if any(word in text for word in ["gym", "workout"]):
         args["category"] = "health"
-    elif any(word in text for word in ["study", "exam", "revision"]):
+    elif any(word in text for word in ["study", "exam"]):
         args["category"] = "study"
     
-    # Commands
-    if any(word in text for word in ["task", "remind", "add "]):
+    # Only add_task for action words
+    if any(word in text for word in ["add task", "remind", "schedule"]):
         return {"command": "add_task", "args": args}
-    if "today" in text or "task" in text and "list" in text:
-        return {"command": "today_tasks", "args": {}}
-    if "exam" in text:
-        return {"command": "add_exam", "args": {"subject": text}}
     
     return None
 def openai_parser(user_text):
