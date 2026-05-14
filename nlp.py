@@ -28,24 +28,46 @@ def _fallback(text):
     return {"command": "inbox_capture", "args": {"text": text}}
 
 def keyword_parser(text):
-    """Free keyword fallback - 80% accuracy"""
+    """Smart keyword parser with date/time extraction"""
     text = text.lower()
+    args = {"task": text}
     
+    # Extract date
+    date_match = re.search(r'(\d{4}-\d{2}-\d{2})|(tomorrow)|(today)', text)
+    if date_match:
+        if date_match.group(1):
+            args["date"] = date_match.group(1)
+        elif date_match.group(2):
+            args["date"] = "TOMORROW"
+        else:
+            args["date"] = "TODAY"
+    
+    # Extract time
+    time_match = re.search(r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)', text, re.IGNORECASE)
+    if time_match:
+        hour = int(time_match.group(1))
+        minute = int(time_match.group(2)) if time_match.group(2) else 0
+        if time_match.group(3).upper() == "PM" and hour != 12:
+            hour += 12
+        elif time_match.group(3).upper() == "AM" and hour == 12:
+            hour = 0
+        args["time"] = f"{hour:02d}:{minute:02d}"
+    
+    # Category inference
+    if any(word in text for word in ["gym", "workout", "exercise"]):
+        args["category"] = "health"
+    elif any(word in text for word in ["study", "exam", "revision"]):
+        args["category"] = "study"
+    
+    # Commands
     if any(word in text for word in ["task", "remind", "add "]):
-        return {"command": "add_task", "args": {"task": text}}
-    if "today" in text or "tasks?" in text:
+        return {"command": "add_task", "args": args}
+    if "today" in text or "task" in text and "list" in text:
         return {"command": "today_tasks", "args": {}}
     if "exam" in text:
         return {"command": "add_exam", "args": {"subject": text}}
-    if "revision" in text or "revise" in text:
-        return {"command": "add_revision", "args": {"topic": text}}
-    if "note" in text:
-        return {"command": "add_note", "args": {"note": text}}
-    if "study" in text and "plan" in text:
-        return {"command": "study_plan", "args": {"subjects": text}}
     
     return None
-
 def openai_parser(user_text):
     """OpenAI GPT-4o-mini (fastest/cheapest)"""
     try:
