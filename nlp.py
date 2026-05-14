@@ -142,7 +142,7 @@ def parse_natural_language(user_text: str) -> dict:
             logging.error(f"Groq error {r.status_code}: {r.text[:300]}")
             return _fallback(user_text)
 
-       raw = r.json()["choices"][0]["message"]["content"].strip()
+        raw = r.json()["choices"][0]["message"]["content"].strip()
 
         # Strip markdown fences more aggressively
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
