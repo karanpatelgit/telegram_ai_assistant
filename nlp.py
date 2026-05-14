@@ -179,36 +179,47 @@ def parse_natural_language(user_text):
             return _fallback(user_text)
 
         raw = r.json()["choices"][0]["message"]["content"].strip()
-        logging.info(f"Groq raw response: {raw}")
+        logging.info(f"Groq raw: {raw}")
 
         # Strip markdown fences
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.MULTILINE).strip()
 
-        # Extract just the JSON object
+        # Extract JSON object
         json_match = re.search(r"\{.*\}", raw, re.DOTALL)
         if not json_match:
-            logging.warning(f"No JSON object found in Groq response: {raw}")
             return _fallback(user_text)
 
-        raw = json_match.group()
-        logging.info(f"Groq extracted JSON: {raw}")
+        parsed = json.loads(json_match.group())
+        logging.info(f"Groq parsed keys: {list(parsed.keys())}")
 
-        parsed = json.loads(raw)
+        # Handle if model used different key names
+        # e.g. "action" instead of "command", "parameters" instead of "args"
+        if "command" not in parsed:
+            for alt in ("action", "intent", "cmd", "type"):
+                if alt in parsed:
+                    parsed["command"] = parsed[alt]
+                    break
 
-        if "command" not in parsed or "args" not in parsed:
-            logging.warning(f"Parsed JSON missing command/args keys: {parsed}")
+        if "args" not in parsed:
+            for alt in ("parameters", "params", "arguments", "data"):
+                if alt in parsed:
+                    parsed["args"] = parsed[alt]
+                    break
+
+        # If still missing, wrap the whole thing
+        if "command" not in parsed:
+            logging.warning(f"No command key found, keys were: {list(parsed.keys())}")
             return _fallback(user_text)
+
+        if "args" not in parsed:
+            parsed["args"] = {}
 
         parsed = _resolve_relative_dates(parsed, ctx["today"])
         return parsed
 
-    except json.JSONDecodeError as e:
-        logging.error(f"JSON decode error: {e} | raw: {raw}")
-        return _fallback(user_text)
     except Exception as e:
-        logging.error(f"NLP parse error: {e}")
+        logging.error(f"NLP parse exception: {e} | raw was: {raw}")
         return _fallback(user_text)
-
 
 COMMAND_LABELS = {
     "add_task": "Add task",
