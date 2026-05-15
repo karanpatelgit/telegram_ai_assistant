@@ -242,25 +242,24 @@ async def generate_ai_image(prompt: str) -> str:
     except Exception as e:
         print(f"Image Gen Error: {e}")
         return None
-     
- 
-@openai_client.on_message(filters.command("generate"))
-async def image_handler(client, message):
-    # Extract the prompt from the message (everything after /generate)
-    if len(message.command) < 2:
-        await message.reply_text("❌ Please provide a prompt. Example: `/generate a futuristic city`")
+
+
+async def cmd_generate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Extract the prompt from /generate arguments
+    if not context.args:
+        await update.message.reply_text("❌ Please provide a prompt. Example: /generate a futuristic city")
         return
     
-    prompt = " ".join(message.command[1:])
+    prompt = " ".join(context.args)
     
     # Send a placeholder loading message
-    loading_msg = await message.reply_text("🎨 Generating your image, please wait...")
+    loading_msg = await update.message.reply_text("🎨 Generating your image, please wait...")
     
     image_url = await generate_ai_image(prompt)
     
     if image_url:
         # Send the photo using the URL and delete the loading message
-        await message.reply_photo(photo=image_url, caption=f"✨ Here is your image for: _{prompt}_")
+        await update.message.reply_photo(photo=image_url, caption=f"✨ Here is your image for: _{prompt}_")
         await loading_msg.delete()
     else:
         await loading_msg.edit_text("❌ Failed to generate image. Please try a different prompt or check your API quota.")
@@ -791,6 +790,7 @@ def main():
     app.add_handler(CommandHandler("remember",    cmd_remember))
     app.add_handler(CommandHandler("memory",      cmd_memory))
     app.add_handler(CommandHandler("stats",       cmd_stats))
+    app.add_handler(CommandHandler("generate",    cmd_generate))
  
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND,
