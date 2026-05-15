@@ -1,6 +1,3 @@
-
-Copy
-
 """
 database.py — Persistent SQLite database
 =========================================
