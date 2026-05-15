@@ -158,7 +158,8 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/reset — reset conversation\n"
             "/explain topic — simple explanation\n"
             "/summarize text — summarize\n"
-            "/decide question — decision helper\n\n"
+            "/decide question — decision helper\n"
+            "/generate prompt — create an AI image\n\n"
             "<i>Or just ask anything in plain English!</i>"
         ),
         "menu_memory": (
