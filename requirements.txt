@@ -13,7 +13,7 @@ requests==2.32.3           # sync HTTP calls to Claude / OpenAI / SambaNova APIs
  
 # ─── Optional: official SDKs (nicer than raw requests) ────────────
 # anthropic==0.34.0        # uncomment if you switch to the Anthropic SDK
-# openai==1.51.0           # uncomment if you switch to the OpenAI SDK
+openai==1.51.0           # uncomment if you switch to the OpenAI SDK
  
 # ─── Database (pick one) ──────────────────────────────────────────
 # sqlite is built-in to Python — no install needed for local dev
