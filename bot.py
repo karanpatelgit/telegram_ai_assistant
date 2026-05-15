@@ -32,6 +32,7 @@ from scheduler import (
     morning_briefing, night_summary
 )
 from lp_v2 import parse_message_async
+from tg_utils import send_long, edit_long   # ← message splitter
  
 load_dotenv()
 TOKEN   = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -85,100 +86,93 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             InlineKeyboardButton("🤖 AI Tools", callback_data="menu_ai"),
             InlineKeyboardButton("🧠 Memory",   callback_data="menu_memory"),
         ],
-        [
-            InlineKeyboardButton("📊 Stats",    callback_data="menu_stats"),
-        ],
+        [InlineKeyboardButton("📊 Stats", callback_data="menu_stats")],
     ]
     await update.message.reply_text(
-        "🤖 *AI Life OS Bot*\n\n"
-        "You can use /commands *or just type naturally!*\n"
+        "🤖 <b>AI Life OS Bot</b>\n\n"
+        "You can use /commands <b>or just type naturally!</b>\n\n"
         "Examples:\n"
-        "• _Add gym tomorrow at 7am_\n"
-        "• _What are my tasks today?_\n"
-        "• _Note: drink 3L water daily #health_\n"
-        "• _Revise Newton's laws for Physics in 3 days_\n\n"
+        "• <i>Add gym tomorrow at 7am</i>\n"
+        "• <i>What are my tasks today?</i>\n"
+        "• <i>Note: drink 3L water daily</i>\n"
+        "• <i>Revise Newton's laws in 3 days</i>\n\n"
         "Choose a category below, or just start typing 👇",
         reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
  
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-    data = query.data
+    data  = query.data
  
+    # ── Use HTML parse mode — avoids Markdown breaking on / _ * chars ──────
     menus = {
         "menu_tasks": (
-            "📋 *Tasks*\n\n"
+            "📋 <b>Tasks</b>\n\n"
             "/add YYYY-MM-DD, task, HH:MM, category\n"
             "/today — today's tasks\n"
             "/done ID — mark done\n"
             "/deltask ID — delete task\n\n"
-            "_Or just type: 'Add submit report tomorrow at 3pm'_"
+            "<i>Or just type: 'Add submit report tomorrow at 3pm'</i>"
         ),
         "menu_study": (
-            "🎓 *Study*\n\n"
+            "🎓 <b>Study</b>\n\n"
             "/addexam subject YYYY-MM-DD HH:MM\n"
             "/exams — list all exams\n"
             "/delexam ID — delete exam\n"
             "/studyplan subjects, days\n\n"
-            "_Or: 'Add physics exam on Aug 10 at 10am'_"
+            "<i>Or: 'Add physics exam on Aug 10 at 10am'</i>"
         ),
         "menu_notes": (
-            "📝 *Notes*\n\n"
+            "📝 <b>Notes</b>\n\n"
             "/note text #tag — save a note\n"
             "/notes — list all notes\n"
             "/find keyword — search notes\n"
             "/delnote ID — delete note\n\n"
-            "_Or: 'Note: always review before sleeping #habit'_"
+            "<i>Or: 'Note: always review before sleeping #habit'</i>"
         ),
         "menu_revision": (
-            "🧠 *Revision*\n\n"
+            "🧠 <b>Revision</b>\n\n"
             "/revise topic, subject, days\n"
             "/revisions — view schedule\n\n"
             "Uses spaced repetition. Reminders auto-sent!\n\n"
-            "_Or: 'Revise thermodynamics for Physics in 4 days'_"
+            "<i>Or: 'Revise thermodynamics for Physics in 4 days'</i>"
         ),
         "menu_content": (
-            "🎬 *Content Creator*\n\n"
+            "🎬 <b>Content Creator</b>\n\n"
             "/idea topic — 5 viral reel ideas\n"
             "/caption topic, platform\n"
             "/savecontent type, content, platform\n"
             "/content — view idea bank"
         ),
         "menu_inbox": (
-            "📥 *Inbox*\n\n"
+            "📥 <b>Inbox</b>\n\n"
             "Send any text → saved to inbox.\n"
             "/inbox — view all items\n"
             "/done_inbox ID — mark processed"
         ),
         "menu_ai": (
-            "🤖 *AI Tools*\n\n"
+            "🤖 <b>AI Tools</b>\n\n"
             "/ask question — chat with AI\n"
             "/reset — reset conversation\n"
             "/explain topic — simple explanation\n"
             "/summarize text — summarize\n"
             "/decide question — decision helper\n\n"
-            "_Or just ask anything in plain English!_"
+            "<i>Or just ask anything in plain English!</i>"
         ),
         "menu_memory": (
-            "🧠 *Memory*\n\n"
+            "🧠 <b>Memory</b>\n\n"
             "/remember key: value\n"
             "/memory — view all memories\n\n"
-            "_Or: 'Remember my college: IIT Delhi'_"
+            "<i>Or: 'Remember my college: IIT Delhi'</i>"
         ),
-        "menu_stats": (
-            "📊 *Analytics*\n\n"
-            "/stats — view usage stats"
-        ),
+        "menu_stats": "📊 <b>Analytics</b>\n\n/stats — view usage stats",
     }
  
-    back_markup = InlineKeyboardMarkup(
-        [[InlineKeyboardButton("⬅️ Back", callback_data="menu_main")]]
-    )
- 
-    if data == "menu_main":
-        keyboard = [
+    # ── Shared keyboard builder ─────────────────────────────────────────────
+    def main_keyboard():
+        return InlineKeyboardMarkup([
             [
                 InlineKeyboardButton("📋 Tasks",    callback_data="menu_tasks"),
                 InlineKeyboardButton("🎓 Study",    callback_data="menu_study"),
@@ -195,28 +189,50 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 InlineKeyboardButton("🤖 AI Tools", callback_data="menu_ai"),
                 InlineKeyboardButton("🧠 Memory",   callback_data="menu_memory"),
             ],
-            [
-                InlineKeyboardButton("📊 Stats",    callback_data="menu_stats"),
-            ],
-        ]
-        await query.edit_message_text(
-            "🤖 AI Life OS Bot\nChoose a category:",
-            reply_markup=InlineKeyboardMarkup(keyboard)
-        )
-    elif data in menus:
-        await query.edit_message_text(
-            menus[data],
-            reply_markup=back_markup,
+            [InlineKeyboardButton("📊 Stats",       callback_data="menu_stats")],
+        ])
+ 
+    back_markup = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("⬅️ Back to Menu", callback_data="menu_main")]]
+    )
+ 
+    try:
+        if data == "menu_main":
+            await query.edit_message_text(
+                "🤖 <b>AI Life OS Bot</b>\n\nChoose a category:",
+                reply_markup=main_keyboard(),
+                parse_mode="HTML"
+            )
+        elif data in menus:
+            await query.edit_message_text(
+                menus[data],
+                reply_markup=back_markup,
+                parse_mode="HTML"
+            )
+        else:
+            # Unknown callback — just refresh main menu
+            await query.edit_message_text(
+                "🤖 <b>AI Life OS Bot</b>\n\nChoose a category:",
+                reply_markup=main_keyboard(),
+                parse_mode="HTML"
+            )
+    except Exception as e:
+        logging.warning(f"Menu callback error ({data}): {e}")
+        # If edit fails (e.g. message too old), send a fresh menu
+        await query.message.reply_text(
+            "🤖 <b>AI Life OS Bot</b>\n\nChoose a category:",
+            reply_markup=main_keyboard(),
+            parse_mode="HTML"
         )
  
  
 # ─────────────────────────────────────────────────────────────────────────────
-# Slash command handlers
+# Slash commands
 # ─────────────────────────────────────────────────────────────────────────────
  
 async def cmd_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        text = update.message.text.replace("/add", "").strip()
+        text  = update.message.text.replace("/add", "").strip()
         parts = [p.strip() for p in text.split(",")]
         date, task, time = parts[0], parts[1], parts[2]
         category = parts[3] if len(parts) > 3 else "general"
@@ -238,7 +254,7 @@ async def cmd_today(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for t in tasks:
         icon = "✅" if t[4] == "Done" else "⏳"
         msg += f"{icon} [{t[0]}] {t[3]} - {t[2]} ({t[5]})\n"
-    await update.message.reply_text(msg)
+    await send_long(update.message, msg)
  
 async def cmd_done(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -278,8 +294,8 @@ async def cmd_exams(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = "🎓 Upcoming Exams\n\n"
     for e in exams:
         delta = (datetime.strptime(e[2], "%Y-%m-%d") - datetime.now()).days
-        msg += f"[{e[0]}] {e[1]} - {e[2]} {e[3]}\n⏳ {delta} days\n\n"
-    await update.message.reply_text(msg)
+        msg  += f"[{e[0]}] {e[1]} - {e[2]} {e[3]}\n⏳ {delta} days\n\n"
+    await send_long(update.message, msg)
  
 async def cmd_delexam(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -291,7 +307,7 @@ async def cmd_delexam(update: Update, context: ContextTypes.DEFAULT_TYPE):
  
 async def cmd_revise(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
-        text = update.message.text.replace("/revise", "").strip()
+        text  = update.message.text.replace("/revise", "").strip()
         parts = [p.strip() for p in text.split(",")]
         topic, subject = parts[0], parts[1]
         days = int(parts[2]) if len(parts) > 2 else 3
@@ -311,7 +327,7 @@ async def cmd_revisions(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = "🧠 Revision Schedule\n\n"
     for r in revisions:
         msg += f"📖 {r[1]} ({r[2]})\n📅 Next: {r[3]}\n\n"
-    await update.message.reply_text(msg)
+    await send_long(update.message, msg)
  
 async def cmd_note(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text.replace("/note", "").strip()
@@ -327,20 +343,20 @@ async def cmd_notes(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("No notes yet")
         return
     msg = "📝 Notes\n\n"
-    for n in notes[:15]:
-        msg += f"[{n[0]}] {n[1][:80]}{'...' if len(n[1])>80 else ''}\n🏷 {n[2] or 'no tags'}\n\n"
-    await update.message.reply_text(msg)
+    for n in notes:
+        msg += f"[{n[0]}] {n[1]}\n🏷 {n[2] or 'no tags'}\n\n"
+    await send_long(update.message, msg)
  
 async def cmd_find(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.message.text.replace("/find", "").strip()
+    query   = update.message.text.replace("/find", "").strip()
     results = search_notes(query)
     if not results:
         await update.message.reply_text(f"No notes found for: {query}")
         return
     msg = f"🔍 Results for '{query}'\n\n"
     for n in results:
-        msg += f"[{n[0]}] {n[1][:100]}\n🏷 {n[2]}\n\n"
-    await update.message.reply_text(msg)
+        msg += f"[{n[0]}] {n[1]}\n🏷 {n[2]}\n\n"
+    await send_long(update.message, msg)
  
 async def cmd_delnote(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -372,7 +388,7 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply = "❌ Took too long. Try again."
     conversation_history[user_id].append({"role": "assistant", "content": reply})
     log_analytics("ai_ask")
-    await thinking_msg.edit_text(f"🤖 {reply}")
+    await edit_long(thinking_msg, f"🤖 {reply}")
  
 async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
@@ -384,14 +400,14 @@ async def cmd_explain(update: Update, context: ContextTypes.DEFAULT_TYPE):
     thinking_msg = await update.message.reply_text("📖 Explaining...")
     loop         = asyncio.get_event_loop()
     reply        = await loop.run_in_executor(None, explain_simple, topic)
-    await thinking_msg.edit_text(f"💡 {reply}")
+    await edit_long(thinking_msg, f"💡 {reply}")
  
 async def cmd_summarize(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text         = update.message.text.replace("/summarize", "").strip()
     thinking_msg = await update.message.reply_text("📝 Summarizing...")
     loop         = asyncio.get_event_loop()
     reply        = await loop.run_in_executor(None, summarize_text, text)
-    await thinking_msg.edit_text(f"📋 {reply}")
+    await edit_long(thinking_msg, f"📋 {reply}")
  
 async def cmd_decide(update: Update, context: ContextTypes.DEFAULT_TYPE):
     question     = update.message.text.replace("/decide", "").strip()
@@ -399,7 +415,7 @@ async def cmd_decide(update: Update, context: ContextTypes.DEFAULT_TYPE):
     loop         = asyncio.get_event_loop()
     reply        = await loop.run_in_executor(None, decision_helper, question)
     log_analytics("ai_decide")
-    await thinking_msg.edit_text(f"🧭 {reply}")
+    await edit_long(thinking_msg, f"🧭 {reply}")
  
 async def cmd_studyplan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -411,7 +427,7 @@ async def cmd_studyplan(update: Update, context: ContextTypes.DEFAULT_TYPE):
         loop     = asyncio.get_event_loop()
         reply    = await loop.run_in_executor(None, study_plan, subjects, days)
         log_analytics("study_plan_generated")
-        await thinking_msg.edit_text(f"📚 Study Plan\n\n{reply}")
+        await edit_long(thinking_msg, f"📚 Study Plan\n\n{reply}")
     except:
         await update.message.reply_text("Usage: /studyplan subjects, days")
  
@@ -421,7 +437,7 @@ async def cmd_idea(update: Update, context: ContextTypes.DEFAULT_TYPE):
     loop         = asyncio.get_event_loop()
     reply        = await loop.run_in_executor(None, viral_ideas, topic)
     log_analytics("idea_generated")
-    await thinking_msg.edit_text(f"🎬 {reply}")
+    await edit_long(thinking_msg, f"🎬 {reply}")
  
 async def cmd_caption(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text     = update.message.text.replace("/caption", "").strip()
@@ -432,7 +448,7 @@ async def cmd_caption(update: Update, context: ContextTypes.DEFAULT_TYPE):
     loop     = asyncio.get_event_loop()
     reply    = await loop.run_in_executor(None, generate_caption, topic, platform)
     log_analytics("caption_generated")
-    await thinking_msg.edit_text(f"📱 {reply}")
+    await edit_long(thinking_msg, f"📱 {reply}")
  
 async def cmd_savecontent(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -451,9 +467,9 @@ async def cmd_content(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Idea bank is empty")
         return
     msg = "💡 Idea Bank\n\n"
-    for i in items[:10]:
-        msg += f"[{i[0]}] {i[1]} | {i[3]}\n{i[2][:80]}\n\n"
-    await update.message.reply_text(msg)
+    for i in items:
+        msg += f"[{i[0]}] {i[1]} | {i[3]}\n{i[2]}\n\n"
+    await send_long(update.message, msg)
  
 async def cmd_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
     items = get_inbox(processed=0)
@@ -462,8 +478,8 @@ async def cmd_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     msg = "📥 Inbox\n\n"
     for i in items:
-        msg += f"[{i[0]}] {i[1][:100]}\n🕐 {i[2]}\n\n"
-    await update.message.reply_text(msg)
+        msg += f"[{i[0]}] {i[1]}\n🕐 {i[2]}\n\n"
+    await send_long(update.message, msg)
  
 async def cmd_done_inbox(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
@@ -490,7 +506,7 @@ async def cmd_memory(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = "🧠 Memory\n\n"
     for m in memories:
         msg += f"• {m[0]}: {m[1]}\n"
-    await update.message.reply_text(msg)
+    await send_long(update.message, msg)
  
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     stats = get_analytics_summary()
@@ -500,7 +516,7 @@ async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     msg = "📊 Analytics\n\n"
     for s in stats:
         msg += f"• {s[0]}: {s[1]}\n"
-    await update.message.reply_text(msg)
+    await send_long(update.message, msg)
  
  
 # ─────────────────────────────────────────────────────────────────────────────
@@ -537,8 +553,7 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
     if cmd == "add_task":
         try:
             add_task(
-                args["date"],
-                args["task"],
+                args["date"], args["task"],
                 args.get("time", "09:00"),
                 args.get("category", "general")
             )
@@ -562,7 +577,7 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
             for t in tasks:
                 icon = "✅" if t[4] == "Done" else "⏳"
                 msg += f"{icon} [{t[0]}] {t[3]} - {t[2]} ({t[5]})\n"
-            await thinking.edit_text(msg)
+            await edit_long(thinking, msg)
  
     elif cmd == "add_exam":
         try:
@@ -586,7 +601,7 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
             for e in exams:
                 delta = (datetime.strptime(e[2], "%Y-%m-%d") - datetime.now()).days
                 msg  += f"[{e[0]}] {e[1]} - {e[2]} {e[3]}\n⏳ {delta} days\n\n"
-            await thinking.edit_text(msg)
+            await edit_long(thinking, msg)
  
     elif cmd == "add_revision":
         try:
@@ -611,7 +626,7 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
             msg = "🧠 Revision Schedule\n\n"
             for r in revisions:
                 msg += f"📖 {r[1]} ({r[2]})\n📅 Next: {r[3]}\n\n"
-            await thinking.edit_text(msg)
+            await edit_long(thinking, msg)
  
     elif cmd == "add_note":
         try:
@@ -629,9 +644,9 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
             await thinking.edit_text("No notes yet")
         else:
             msg = "📝 Notes\n\n"
-            for n in notes[:15]:
-                msg += f"[{n[0]}] {n[1][:80]}{'...' if len(n[1])>80 else ''}\n🏷 {n[2] or 'no tags'}\n\n"
-            await thinking.edit_text(msg)
+            for n in notes:
+                msg += f"[{n[0]}] {n[1]}\n🏷 {n[2] or 'no tags'}\n\n"
+            await edit_long(thinking, msg)
  
     elif cmd == "ask_ai":
         question = args.get("question", user_text)
@@ -649,14 +664,14 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
             reply = "❌ Took too long. Try again."
         conversation_history[user_id].append({"role": "assistant", "content": reply})
         log_analytics("ai_ask")
-        await thinking.edit_text(f"🤖 {reply}")
+        await edit_long(thinking, f"🤖 {reply}")
  
     elif cmd == "study_plan":
         subjects = args.get("subjects", args.get("raw", ""))
         days     = int(args.get("days", 7))
         reply    = await loop.run_in_executor(None, study_plan, subjects, days)
         log_analytics("study_plan_generated")
-        await thinking.edit_text(f"📚 Study Plan\n\n{reply}")
+        await edit_long(thinking, f"📚 Study Plan\n\n{reply}")
  
     elif cmd == "stats":
         stats = get_analytics_summary()
@@ -666,10 +681,9 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
             msg = "📊 Analytics\n\n"
             for s in stats:
                 msg += f"• {s[0]}: {s[1]}\n"
-            await thinking.edit_text(msg)
+            await edit_long(thinking, msg)
  
     else:
-        # inbox_capture fallback
         add_inbox(user_text)
         await thinking.edit_text(
             "📥 Saved to inbox!\n\n"
@@ -743,6 +757,10 @@ def main():
         poll_interval=1.0,
         timeout=10
     )
+ 
+ 
+if __name__ == "__main__":
+    main()
  
  
 if __name__ == "__main__":
