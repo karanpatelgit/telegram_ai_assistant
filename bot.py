@@ -2,7 +2,7 @@ import os
 import asyncio
 import logging
 from datetime import datetime, time as dtime
-from lp_v2 import parse_message_async
+from nlp
 import pytz
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
