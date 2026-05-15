@@ -21,7 +21,7 @@ from database import (
     add_content, get_content,
     add_inbox, get_inbox, process_inbox_item,
     set_memory, get_memory, get_all_memory,
-    get_analytics_summary, log_analytics
+    get_analytics_summary, log_analytics, get_conn
 )
 from ai import (
     ask_anything, explain_simple, summarize_text,
@@ -470,9 +470,10 @@ async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conversation_history[user_id] = []
     # Clear memory from database
     try:
-        from database import conn
+        conn = get_conn()
         conn.execute("DELETE FROM memory")
         conn.commit()
+        conn.close()
         await update.message.reply_text("🧹 Your history and memory have been reset!")
     except Exception as e:
         await update.message.reply_text(f"🔄 Conversation reset! ⚠️ Memory clear failed: {e}")
