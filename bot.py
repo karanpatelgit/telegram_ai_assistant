@@ -2,7 +2,7 @@ import os
 import asyncio
 import logging
 from datetime import datetime, time as dtime
-
+from lp_v2 import parse_message_async
 import pytz
 from dotenv import load_dotenv
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -46,6 +46,9 @@ logging.basicConfig(
 
 conversation_history = {}
 
+async def handle_message(update, context):
+    result = await parse_message_async(update.message.text)
+    # result → {"command": "add_task", "args": {"task": "...", "date": "2025-05-16", ...}}
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
