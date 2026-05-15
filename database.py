@@ -41,6 +41,10 @@ def get_conn():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+async def clear_user_data(user_id):
+   # This wipes the memory/history for a specific user
+    await db.memory.delete_many({"user_id": user_id})
+    await db.study_plans.delete_many({"user_id": user_id})
  
  
 def init_db():
