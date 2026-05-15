@@ -767,13 +767,22 @@ async def natural_language_handler(update: Update, context: ContextTypes.DEFAULT
             await edit_long(thinking, msg)
  
     else:
-        add_inbox(user_text)
-        await thinking.edit_text(
-            "📥 Saved to inbox!\n\n"
-            "_Tip: be more specific and I'll act on it directly.\n"
-            "e.g. 'Add gym tomorrow at 7am' or 'What are my tasks today?'_",
-            parse_mode="Markdown"
-        )
+         # Fallback to casual AI chat for free-form messages
+        if user_id not in conversation_history:
+            conversation_history[user_id] = []
+        conversation_history[user_id].append({"role": "user", "content": user_text})
+        if len(conversation_history[user_id]) > 10:
+            conversation_history[user_id] = conversation_history[user_id][-10:]
+        try:
+            reply = await asyncio.wait_for(
+                loop.run_in_executor(None, chat_with_history, conversation_history[user_id]),
+                timeout=25
+            )
+            conversation_history[user_id].append({"role": "assistant", "content": reply})
+            log_analytics("ai_ask")
+            await edit_long(thinking, f"🤖 {reply}")
+        except asyncio.TimeoutError:
+            await thinking.edit_text("❌ Took too long. Try again.")
  
  
 # ─────────────────────────────────────────────────────────────────────────────
