@@ -1,6 +1,29 @@
-openai>=1.0.0
-requests
-python-telegram-bot[all]
+
 apscheduler
-python-dotenv
-pytz
+# ─── Telegram Bot ─────────────────────────────────────────────────
+python-telegram-bot[job-queue]==21.6   # async bot framework (v20+ uses asyncio)
+ 
+# ─── NLP / Date Parsing (lp_v2.py Layer 2) ────────────────────────
+dateparser==1.2.0          # natural language date extraction (200+ languages)
+python-dateutil==2.9.0     # relativedelta + robust date parsing (dateparser dep)
+pytz==2024.1               # IST timezone + all IANA timezones
+ 
+# ─── HTTP / AI APIs (lp_v2.py Layer 3) ────────────────────────────
+requests==2.32.3           # sync HTTP calls to Claude / OpenAI / SambaNova APIs
+ 
+# ─── Optional: official SDKs (nicer than raw requests) ────────────
+# anthropic==0.34.0        # uncomment if you switch to the Anthropic SDK
+# openai==1.51.0           # uncomment if you switch to the OpenAI SDK
+ 
+# ─── Database (pick one) ──────────────────────────────────────────
+# sqlite is built-in to Python — no install needed for local dev
+# For production Postgres, uncomment:
+# psycopg2-binary==2.9.9
+ 
+# ─── Environment variables ────────────────────────────────────────
+python-dotenv==1.0.1       # loads .env file → os.getenv() works cleanly
+ 
+# ─── Logging / Utils ─────────────────────────────────────────────
+# All other imports in lp_v2.py (os, re, json, logging, asyncio,
+# datetime, typing) are Python stdlib — nothing to install.
+ 
