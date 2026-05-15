@@ -248,7 +248,9 @@ async def generate_ai_image(prompt: str) -> str:
     except Exception as e:
         print(f"Image Gen Error: {e}")
         return None
- @app.on_message(filters.command("generate"))
+     
+ 
+@app.on_message(filters.command("generate"))
 async def image_handler(client, message):
     # Extract the prompt from the message (everything after /generate)
     if len(message.command) < 2:
