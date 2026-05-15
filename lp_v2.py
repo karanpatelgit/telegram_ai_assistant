@@ -380,7 +380,7 @@ def _ai_parse_sambanova(text):
                 "Content-Type": "application/json",
             },
             json={
-                "model": "Meta-Llama-3.1-8B-Instruct",
+                "model": "Meta-Llama-3.3-70B-Instruct",
                 "response_format": {"type": "json_object"},
                 "max_tokens": 256,
                 "messages": [
