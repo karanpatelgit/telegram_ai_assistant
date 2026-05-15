@@ -24,6 +24,10 @@
         result = parse_message(msg, use_ai=False)
         print(f"\n  IN  : {msg}")
         print(f"  CMD : {result['command']}")
+import asyncio
+async def parse_message_async(text: str, use_ai: bool = True) -> dict:
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, parse_message, text, use_ai)
         print(f"  ARGS: {result['args']}")
         print(f"  INFO: {describe_parsed(result)}")
     print("\n" + "=" * 55)
