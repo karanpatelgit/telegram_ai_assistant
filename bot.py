@@ -155,6 +155,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "menu_ai": (
             "🤖 <b>AI Tools</b>\n\n"
             "/ask question — chat with AI\n"
+            "/chat message — casual chat with AI\n"
             "/reset — reset conversation\n"
             "/clear — clear chat history\n"
             "/explain topic — simple explanation\n"
@@ -421,6 +422,30 @@ async def cmd_ask(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(conversation_history[user_id]) > 10:
         conversation_history[user_id] = conversation_history[user_id][-10:]
     thinking_msg = await update.message.reply_text("🤔 Thinking...")
+    try:
+        loop  = asyncio.get_event_loop()
+        reply = await asyncio.wait_for(
+            loop.run_in_executor(None, chat_with_history, conversation_history[user_id]),
+            timeout=25
+        )
+    except asyncio.TimeoutError:
+        reply = "❌ Took too long. Try again."
+    conversation_history[user_id].append({"role": "assistant", "content": reply})
+    log_analytics("ai_ask")
+    await edit_long(thinking_msg, f"🤖 {reply}")
+
+async def cmd_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    message = " ".join(context.args).strip()
+    if not message:
+        await update.message.reply_text("Usage: /chat tell me something interesting")
+        return
+    if user_id not in conversation_history:
+        conversation_history[user_id] = []
+    conversation_history[user_id].append({"role": "user", "content": message})
+    if len(conversation_history[user_id]) > 10:
+        conversation_history[user_id] = conversation_history[user_id][-10:]
+    thinking_msg = await update.message.reply_text("💬 Chatting...")
     try:
         loop  = asyncio.get_event_loop()
         reply = await asyncio.wait_for(
@@ -781,6 +806,7 @@ def main():
     app.add_handler(CommandHandler("find",        cmd_find))
     app.add_handler(CommandHandler("delnote",     cmd_delnote))
     app.add_handler(CommandHandler("ask",         cmd_ask))
+    app.add_handler(CommandHandler("chat",        cmd_chat))
     app.add_handler(CommandHandler("reset",       cmd_reset))
     app.add_handler(CommandHandler("clear",       cmd_clear))
     app.add_handler(CommandHandler("explain",     cmd_explain))
