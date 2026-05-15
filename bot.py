@@ -47,7 +47,7 @@ logging.basicConfig(
  
 conversation_history = {}
  #--------------------------------Clear function---------------------------------
-@app.on_message(filters.command("clear"))
+@openai_client.on_message(filters.command("clear"))
 async def clear_history(client, message):
     user_id = message.from_user.id
     await clear_user_data(user_id)
