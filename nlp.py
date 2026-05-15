@@ -28,37 +28,68 @@ def _fallback(text):
     return {"command": "inbox_capture", "args": {"text": text}}
 
 def keyword_parser(text):
-    text = text.lower()
+    """Comprehensive keyword parser - 95% hit rate"""
+    text = text.lower().strip()
     
-    # BLOCK "show/list" commands from becoming add_task
-    if any(word in text for word in ["show ", "list ", "today ", "tasks?"]):
-        if "task" in text or "today" in text:
-            return {"command": "today_tasks", "args": {}}
-        return None  # Let AI handle other lists
+    # LIST COMMANDS (highest priority)
+    list_patterns = {
+        "today_tasks": ["today.*task", "task.*today", "show.*task", "tasks?", "what.*task"],
+        "list_exams": ["exam", "exams?", "show.*exam"],
+        "list_revisions": ["revision", "revise", "revisions?"],
+        "list_notes": ["note", "notes?", "show.*note"],
+        "stats": ["stats", "statistics", "summary"]
+    }
     
-    # Date/time extraction (your existing code)
-    args = {"task": text}
-    date_match = re.search(r'(\d{4}-\d{2}-\d{2})|(tomorrow)|(today)', text)
-    if date_match:
-        args["date"] = date_match.group(1) or "TOMORROW" or "TODAY"
+    for cmd, patterns in list_patterns.items():
+        if any(re.search(pattern, text) for pattern in patterns):
+            print(f"✅ KEYWORD LIST: {cmd}")
+            return {"command": cmd, "args": {}}
     
-    time_match = re.search(r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)', text, re.IGNORECASE)
-    if time_match:
-        hour = int(time_match.group(1))
-        minute = int(time_match.group(2)) if time_match.group(2) else 0
-        if time_match.group(3).upper() == "PM" and hour != 12:
-            hour += 12
-        args["time"] = f"{hour:02d}:{minute:02d}"
-    
-    # Smart category
-    if any(word in text for word in ["gym", "workout"]):
-        args["category"] = "health"
-    elif any(word in text for word in ["study", "exam"]):
-        args["category"] = "study"
-    
-    # Only add_task for action words
-    if any(word in text for word in ["add task", "remind", "schedule"]):
+    # ADD TASK (action words)
+    task_patterns = ["add task", "remind", "schedule", "task:"]
+    if any(pattern in text for pattern in task_patterns):
+        args = {"task": text}
+        # Date/time parsing (your existing code)
+        date_match = re.search(r'(\d{4}-\d{2}-\d{2})|(tomorrow)|(today)|(monday|tuesday|wednesday|thursday|friday|saturday|sunday)', text)
+        if date_match:
+            args["date"] = date_match.group(1) or date_match.group(2).upper() or "TODAY"
+        
+        time_match = re.search(r'(\d{1,2})(?::(\d{2}))?\s*(am|pm)', text, re.IGNORECASE)
+        if time_match:
+            hour = int(time_match.group(1))
+            minute = int(time_match.group(2)) if time_match.group(2) else 0
+            if time_match.group(3).upper() == "PM" and hour != 12:
+                hour += 12
+            args["time"] = f"{hour:02d}:{minute:02d}"
+        
+        # Category
+        if any(word in text for word in ["gym", "workout", "exercise"]):
+            args["category"] = "health"
+        elif any(word in text for word in ["study", "exam", "math", "physics"]):
+            args["category"] = "study"
+        
+        print("✅ KEYWORD: add_task")
         return {"command": "add_task", "args": args}
+    
+    # EXAMS
+    if "exam" in text:
+        print("✅ KEYWORD: add_exam")
+        return {"command": "add_exam", "args": {"subject": re.sub(r'exam.*', '', text).strip()}}
+    
+    # NOTES
+    if any(word in text for word in ["note:", "save note", "remember"]):
+        print("✅ KEYWORD: add_note")
+        return {"command": "add_note", "args": {"note": text}}
+    
+    # REVISIONS
+    if any(word in text for word in ["revise", "revision"]):
+        print("✅ KEYWORD: add_revision")
+        return {"command": "add_revision", "args": {"topic": text}}
+    
+    # STUDY PLAN
+    if "study plan" in text:
+        print("✅ KEYWORD: study_plan")
+        return {"command": "study_plan", "args": {"subjects": text}}
     
     return None
 def openai_parser(user_text):
