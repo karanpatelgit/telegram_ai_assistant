@@ -156,6 +156,7 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "🤖 <b>AI Tools</b>\n\n"
             "/ask question — chat with AI\n"
             "/reset — reset conversation\n"
+            "/clear — clear chat history\n"
             "/explain topic — simple explanation\n"
             "/summarize text — summarize\n"
             "/decide question — decision helper\n"
@@ -168,7 +169,11 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "/memory — view all memories\n\n"
             "<i>Or: 'Remember my college: IIT Delhi'</i>"
         ),
-        "menu_stats": "📊 <b>Analytics</b>\n\n/stats — view usage stats",
+        "menu_stats": (
+            "📊 <b>Analytics</b>\n\n"
+            "/stats — view usage stats\n"
+            "/start — open the main command menu"
+        ),
     }
  
     # ── Shared keyboard builder ─────────────────────────────────────────────
