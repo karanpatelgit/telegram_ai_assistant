@@ -250,7 +250,7 @@ async def generate_ai_image(prompt: str) -> str:
         return None
      
  
-@app.on_message(filters.command("generate"))
+@openai_client.on_message(filters.command("generate"))
 async def image_handler(client, message):
     # Extract the prompt from the message (everything after /generate)
     if len(message.command) < 2:
