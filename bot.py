@@ -1,4 +1,5 @@
 import os
+from openai import AsyncOpenAI
 import asyncio
 import logging
 from datetime import datetime, time as dtime
@@ -45,7 +46,12 @@ logging.basicConfig(
 )
  
 conversation_history = {}
- 
+ #--------------------------------Clear function---------------------------------
+@app.on_message(filters.command("clear"))
+async def clear_history(client, message):
+    user_id = message.from_user.id
+    await clear_user_data(user_id)
+    await message.reply_text("🧹 Your history and memory sections have been reset!")
  
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -224,8 +230,44 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=main_keyboard(),
             parse_mode="HTML"
         )
- 
- 
+ #---------------------Ai utility-------------------------------------------
+
+openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+
+async def generate_ai_image(prompt: str) -> str:
+    try:
+        response = await openai_client.images.generate(
+            model="dall-e-3",  # or dall-e-2 for cheaper testing
+            prompt=prompt,
+            n=1,
+            size="1024x1024"
+        )
+        # Returns the URL of the generated image
+        return response.data[0].url
+    except Exception as e:
+        print(f"Image Gen Error: {e}")
+        return None
+ @app.on_message(filters.command("generate"))
+async def image_handler(client, message):
+    # Extract the prompt from the message (everything after /generate)
+    if len(message.command) < 2:
+        await message.reply_text("❌ Please provide a prompt. Example: `/generate a futuristic city`")
+        return
+    
+    prompt = " ".join(message.command[1:])
+    
+    # Send a placeholder loading message
+    loading_msg = await message.reply_text("🎨 Generating your image, please wait...")
+    
+    image_url = await generate_ai_image(prompt)
+    
+    if image_url:
+        # Send the photo using the URL and delete the loading message
+        await message.reply_photo(photo=image_url, caption=f"✨ Here is your image for: _{prompt}_")
+        await loading_msg.delete()
+    else:
+        await loading_msg.edit_text("❌ Failed to generate image. Please try a different prompt or check your API quota.")
 # ─────────────────────────────────────────────────────────────────────────────
 # Slash commands
 # ─────────────────────────────────────────────────────────────────────────────
