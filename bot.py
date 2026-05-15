@@ -46,12 +46,6 @@ logging.basicConfig(
 )
  
 conversation_history = {}
- #--------------------------------Clear function---------------------------------
-@openai_client.on_message(filters.command("clear"))
-async def clear_history(client, message):
-    user_id = message.from_user.id
-    await clear_user_data(user_id)
-    await message.reply_text("🧹 Your history and memory sections have been reset!")
  
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -231,10 +225,10 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML"
         )
  #---------------------Ai utility-------------------------------------------
-
+ 
 openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-
+ 
+ 
 async def generate_ai_image(prompt: str) -> str:
     try:
         response = await openai_client.images.generate(
@@ -438,6 +432,21 @@ async def cmd_reset(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     conversation_history[user_id] = []
     await update.message.reply_text("🔄 Conversation reset!")
+ 
+async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Clear both conversation history and memory."""
+    user_id = update.message.from_user.id
+    # Clear conversation history
+    conversation_history[user_id] = []
+    # Clear memory from database
+    try:
+        from database import conn
+        conn.execute("DELETE FROM memory")
+        conn.commit()
+        await update.message.reply_text("🧹 Your history and memory have been reset!")
+    except Exception as e:
+        await update.message.reply_text(f"🔄 Conversation reset! ⚠️ Memory clear failed: {e}")
+ 
  
 async def cmd_explain(update: Update, context: ContextTypes.DEFAULT_TYPE):
     topic        = update.message.text.replace("/explain", "").strip()
@@ -768,6 +777,7 @@ def main():
     app.add_handler(CommandHandler("delnote",     cmd_delnote))
     app.add_handler(CommandHandler("ask",         cmd_ask))
     app.add_handler(CommandHandler("reset",       cmd_reset))
+    app.add_handler(CommandHandler("clear",       cmd_clear))
     app.add_handler(CommandHandler("explain",     cmd_explain))
     app.add_handler(CommandHandler("summarize",   cmd_summarize))
     app.add_handler(CommandHandler("decide",      cmd_decide))
@@ -806,6 +816,3 @@ def main():
 if __name__ == "__main__":
     main()
  
- 
-if __name__ == "__main__":
-    main()
